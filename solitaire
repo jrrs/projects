@@ -397,17 +397,6 @@ class Table(object):
 			self.deck.flip()
 		return True
 
-	def get_heads(self):
-		return [tableau.up.head() for tableau in self.tableaus]
-
-	def get_tails(self):
-		return [tableau.up.tail() for tableau in self.tableaus]
-
-	def play_card(self):
-		card = self.deck.up[-1]
-		for tableau in self.tableaus:
-			pass
-			
 	def flip_tableaus(self):
 		"""tableau.flip() all the tableaus"""
 		for tableau in self.tableaus:
