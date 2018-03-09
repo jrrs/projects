@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import copy
 import random
 import time
 
@@ -493,7 +492,6 @@ def play_a(table):
 	moves = 0
 	print 'Start:\n{}'.format(table)
 	while True:
-		#time.sleep(0.5)
 		moves += 1
 		if table.flip_tableaus():
 			continue
