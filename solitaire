@@ -536,6 +536,7 @@ def play_a(table):
 			print 'number of times through the deck: {}'.format(table.deck.times_redealt)
 			break
 	print 'End:\n{}'.format(table)
+	return (moves, table.did_we_win())
 		
 
 def main():
@@ -546,10 +547,17 @@ def main():
 	# shuffle it
 	# populate foundation piles
 	#
-	original_table = Table()
-	# deepcopy so we can pass the original table instance
-	# to multiple different play_N() functions as i write them
-	play_a(copy.deepcopy(original_table))
+	max_iterations = 100
+	wins = 0
+	for iteration in range(max_iterations):
+		original_table = Table()
+		# deepcopy so we can pass the original table instance
+		# to multiple different play_N() functions as i write them
+		(moves, we_won) = play_a(copy.deepcopy(original_table))
+		if we_won:
+			wins += 1
+	print 'success rate: {}'.format(float(wins) / max_iterations)
+		
 
 if __name__ == "__main__":
 	main()
