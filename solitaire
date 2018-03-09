@@ -444,6 +444,9 @@ class Table(object):
 					
 
 	def move_onto_foundation(self):
+		"""
+		iterate through tableau piles and move to foundation any candidate cards
+		"""
 		for tableau in self.tableaus:
 			try:
 				card = tableau.up.tail()
