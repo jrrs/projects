@@ -6,7 +6,7 @@ import time
 
 NUMBER_OF_SUITS = 4
 CARDS_PER_SUIT = 13
-CARDS_PER_DRAW = 3
+CARDS_PER_DRAW = 1
 
 class Card(object):
 	"""
