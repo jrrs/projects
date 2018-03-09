@@ -9,7 +9,8 @@ CARDS_PER_SUIT = 13
 CARDS_PER_DRAW = 3
 
 class Card(object):
-	"""an object representing a playing Card.
+	"""
+	an object representing a playing Card.
 
 	value -- A,2,3,4,5,6,7,8,9,10,J,Q,K (0-12).
 	suit -- spades, hearts, clubs, diamonds (0-3).
@@ -19,9 +20,7 @@ class Card(object):
 	"""
 
 	def __init__(self, value = 0, suit = 0, face_up = False):
-		"""default: Ace of Spades
-
-		"""
+		"""default: create an Ace of Spades face down"""
 
 		self.suit = suit
 		self.value = value
@@ -82,6 +81,7 @@ class Card(object):
 		raise Exception('invalid suit: {}'.format(suit))
 
 	def get_value(self):
+		"""return friendly string representation of suit"""
 		if self.value == 0:
 			return "Ace"
 		elif self.value == 10:
@@ -96,6 +96,11 @@ class Card(object):
 			raise Exception('invalid value: {}'.format(self.value))
 
 	def set_value(self, value):
+		"""
+		set the face value of the card
+
+		value -- int (0-13) or string (e.g. "King")
+		"""
 		error = 0
 		if type(value).__name__ == 'str':
 			if value.tolower().startswith('ace'):
@@ -138,7 +143,12 @@ class Card(object):
 		raise Exception('invalid value: {}'.format(value))
 
 	def alternate_suits(self):
-		"""return a list of complementary suits"""
+		"""
+		return a list of complementary suits
+
+		i.e. relevant to the tableau piles, you can put red on black
+		or vice versa.
+		"""
 		if self.suit & 1:
 			# odd
 			return [0, 2]
@@ -166,6 +176,7 @@ class Pile(list):
 		  set cards to face up (if False, down) when using put_item() and take_item()
 		  (default: False)
 	limit -- limit on the number of members (default CARDS_PER_SUIT)
+	cards -- the list of actual cards
 	"""
 
 	def __init__(self, upcard = False, limit = CARDS_PER_SUIT):
@@ -196,10 +207,12 @@ class Pile(list):
 		return self.cards.pop()
 
 	def head(self):
+		"""return "first" card in the list"""
 		if self.empty():
 			raise Empty
 		return self.cards[0]
 	def tail(self):
+		"""return "last" card in the list"""
 		if self.empty():
 			raise Empty
 		return self.cards[-1]
@@ -211,6 +224,10 @@ class Pile(list):
 		return False
 
 class ComboPile(object):
+	"""
+	object with two Piles, up_pile and down_pile, for if card is
+	face up or not.
+	"""
 	def __init__(self, up_limit = CARDS_PER_SUIT, down_limit = 0):
 		self.up = Pile(True, up_limit)
 		self.down = Pile(False, down_limit)
@@ -238,6 +255,12 @@ class ComboPile(object):
 			self.down.put_item(self.up.take_item())
 
 class FoundationPile(ComboPile):
+	"""
+	destination pile for gameplay.  
+
+	down_pile is irrelevant for this one, so might be suitable to just
+	inherit from Pile instead - code has changed a bunch before being in RCS
+	"""
 	def __init__(self, card_limit = CARDS_PER_SUIT):
 		super(FoundationPile, self).__init__(CARDS_PER_SUIT, 0)
 
@@ -264,10 +287,8 @@ class TableauPile(ComboPile):
 	1) face up pile (card stack in play)
 	2) face down pile (draw pile to flip and get rid of)
 	
-	1 is limited to CARDS_PER_SUIT like a normal run (although it has to alternate color)
-	2 is variable from 0 cards to 6 cards across the range of piles.
-
-	which is why it doesn't inherit from Pile like the others
+	face_up is limited to CARDS_PER_SUIT like a normal run (although it has to alternate color)
+	face_down is variable from 0 cards to 6 cards across the range of piles.
 	"""
 	def __init__(self, face_up_limit, face_down_limit):
 		super(TableauPile, self).__init__(face_up_limit, face_down_limit)
@@ -348,6 +369,7 @@ class Table(object):
 		return table
 
 	def deal(self):
+		"""shuffle the deck and then populate tableau piles"""
 		self.deck.shuffle()
 		for i in range(7):
 			# draw one card and place it on face up stack
@@ -387,6 +409,7 @@ class Table(object):
 			pass
 			
 	def flip_tableaus(self):
+		"""tableau.flip() all the tableaus"""
 		for tableau in self.tableaus:
 			if tableau.flip():
 				return True
@@ -509,6 +532,8 @@ def main():
 	# populate foundation piles
 	#
 	original_table = Table()
+	# deepcopy so we can pass the original table instance
+	# to multiple different play_N() functions as i write them
 	play_a(copy.deepcopy(original_table))
 
 if __name__ == "__main__":
