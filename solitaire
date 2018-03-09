@@ -222,6 +222,12 @@ class Pile(list):
 			return True
 		return False
 
+	def full(self):
+		"""return True if pile is at limit"""
+		if len(self.cards) == self.limit:
+			return True
+		return False
+
 class ComboPile(object):
 	"""
 	object with two Piles, up_pile and down_pile, for if card is
@@ -476,6 +482,21 @@ class Table(object):
 				return True
 		return False
 
+	def did_we_win(self):
+		if not self.deck.up.empty():
+			return False
+		if not self.deck.down.empty():
+			return False
+		for tableau in self.tableaus:
+			if not tableau.up.empty():
+				return False
+			if not tableau.down.empty():
+				return False
+		for foundation in self.foundations:
+			if not foundation.up.full():
+				return False
+		return True
+
 
 def play_a(table):
 	"""first play function
@@ -508,6 +529,10 @@ def play_a(table):
 			continue
 		else:
 			print 'move #{}: no more moves'.format(moves)
+			if table.did_we_win():
+				print '#winning'
+			else:
+				print 'fail'
 			print 'number of times through the deck: {}'.format(table.deck.times_redealt)
 			break
 	print 'End:\n{}'.format(table)
