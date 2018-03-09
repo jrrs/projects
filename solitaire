@@ -1,0 +1,515 @@
+#!/usr/bin/env python
+
+import copy
+import random
+import time
+
+NUMBER_OF_SUITS = 4
+CARDS_PER_SUIT = 13
+CARDS_PER_DRAW = 3
+
+class Card(object):
+	"""an object representing a playing Card.
+
+	value -- A,2,3,4,5,6,7,8,9,10,J,Q,K (0-12).
+	suit -- spades, hearts, clubs, diamonds (0-3).
+	face_up -- boolean
+	previous_parents -- list containing cards this card has previously been immediately under
+			    so as to guard against moving it back there (loops)
+	"""
+
+	def __init__(self, value = 0, suit = 0, face_up = False):
+		"""default: Ace of Spades
+
+		"""
+
+		self.suit = suit
+		self.value = value
+		self.face_up = face_up
+		self.previous_parents = []
+
+	def __str__(self):
+		"""return string e.g. '5 of Hearts'."""
+		if self.face_up:
+			return '{} of {}'.format(self.get_value(), self.get_suit())
+		else:
+			return '{} of {}'.format('XX', 'XX')
+
+	def flip(self):
+		"""invert face_up state"""
+		self.face_up = not self.face_up
+
+	def get_suit(self):
+		"""return string describing suit"""
+		if self.suit == 0:
+			return "Spades"
+		elif self.suit == 1:
+			return "Hearts"
+		elif self.suit == 2:
+			return "Clubs"
+		elif self.suit == 3:
+			return "Diamonds"
+		else:
+			raise Exception('invalid suit: {}'.format(self.suit))
+
+	def set_suit(self, suit):
+		"""set suit of Card.
+
+		suit -- string (e.g. "Hearts") or int (e.g. 1)
+		"""
+
+		error = 0
+		if type(suit).__name__ == 'str':
+			if suit.lower().startswith('spade'):
+				self.suit = 0
+			elif suit.lower().startswith('heart'):
+				self.suit = 1
+			elif suit.lower().startswith('club'):
+				self.suit = 2
+			elif suit.lower().startswith('diamond'):
+				self.suit = 3
+			else:
+				error = 1
+		elif type(suit).__name__ == 'int':
+			if suit >= 0 and suit <= 3:
+				self.suit = suit
+			else:
+				error = 1
+		else:
+			error = 1
+		if error == 0:
+			return
+		raise Exception('invalid suit: {}'.format(suit))
+
+	def get_value(self):
+		if self.value == 0:
+			return "Ace"
+		elif self.value == 10:
+			return "Jack"
+		elif self.value == 11:
+			return "Queen"
+		elif self.value == 12:
+			return "King"
+		elif self.value > 0 and self.value < 10:
+			return "{}".format(self.value + 1)
+		else:
+			raise Exception('invalid value: {}'.format(self.value))
+
+	def set_value(self, value):
+		error = 0
+		if type(value).__name__ == 'str':
+			if value.tolower().startswith('ace'):
+				self.value = 0
+			elif value.tolower().startswith('two'):
+				self.value = 1
+			elif value.tolower().startswith('three'):
+				self.value = 2
+			elif value.tolower().startswith('four'):
+				self.value = 3
+			elif value.tolower().startswith('five'):
+				self.value = 4
+			elif value.tolower().startswith('six'):
+				self.value = 5
+			elif value.tolower().startswith('seven'):
+				self.value = 6
+			elif value.tolower().startswith('eight'):
+				self.value = 7
+			elif value.tolower().startswith('nine'):
+				self.value = 8
+			elif value.tolower().startswith('ten'):
+				self.value = 9
+			elif value.tolower().startswith('jack'):
+				self.value = 10
+			elif value.tolower().startswith('queen'):
+				self.value = 11
+			elif value.tolower().startswith('king'):
+				self.value = 12
+			else:
+				error = 1
+		elif type(value).__name__ == 'int':
+			if value >= 0 and value < CARDS_PER_SUIT:
+				self.value = value
+			else:
+				error = 1
+		else:
+			error = 1
+		if error == 0:
+			return
+		raise Exception('invalid value: {}'.format(value))
+
+	def alternate_suits(self):
+		"""return a list of complementary suits"""
+		if self.suit & 1:
+			# odd
+			return [0, 2]
+		else:
+			# even
+			return [1, 3]
+		
+
+class Full(Exception):
+	"""
+	indicates a Pile is already at its limit
+	"""
+	pass
+
+class Empty(Exception):
+	"""
+	indicates a Pile is empty
+	"""
+	pass
+
+class Pile(list):
+	"""simple Pile of cards
+
+	upcard -- boolean.
+		  set cards to face up (if False, down) when using put_item() and take_item()
+		  (default: False)
+	limit -- limit on the number of members (default CARDS_PER_SUIT)
+	"""
+
+	def __init__(self, upcard = False, limit = CARDS_PER_SUIT):
+		self.cards = []
+		self.limit = limit
+		self.upcard = upcard
+
+	def __str__(self):
+		return '{}'.format([str(card) for card in self.cards])
+
+	def put_item(self, item):
+		"""add a Card to the Pile, respecting limit"""
+		if self.upcard:
+			if not item.face_up:
+				item.flip()
+		else:
+			if item.face_up:
+				item.flip()
+
+		if len(self) > self.limit:
+			raise Full
+		self.cards.append(item)
+
+	def take_item(self):
+		"""return end-most Card, remove from list"""
+		if self.empty():
+			raise Empty
+		return self.cards.pop()
+
+	def head(self):
+		if self.empty():
+			raise Empty
+		return self.cards[0]
+	def tail(self):
+		if self.empty():
+			raise Empty
+		return self.cards[-1]
+
+	def empty(self):
+		"""return True if has no members"""
+		if len(self.cards) == 0:
+			return True
+		return False
+
+class ComboPile(object):
+	def __init__(self, up_limit = CARDS_PER_SUIT, down_limit = 0):
+		self.up = Pile(True, up_limit)
+		self.down = Pile(False, down_limit)
+	def __str__(self):
+		return 'up: {}, down: {}'.format(self.up, self.down)
+
+	def flip(self):
+		"""
+		flip top card
+		if down pile is nonempty, move top card from down pile to up pile
+		"""
+		if not self.up.empty():
+			return False
+		if self.down.empty():
+			return False
+		self.up.put_item(self.down.take_item())
+		return True
+
+	def flop(self):
+		"""
+		put all face up cards back onto face down pile
+		"""
+		self.up.reverse()
+		for c in self.up.cards:
+			self.down.put_item(self.up.take_item())
+
+class FoundationPile(ComboPile):
+	def __init__(self, card_limit = CARDS_PER_SUIT):
+		super(FoundationPile, self).__init__(CARDS_PER_SUIT, 0)
+
+	def accepts(self, card):
+		"""
+		return True if Card can be put on the bottom of our face up stack
+		
+		Card must be same suit and value 1 higher than our tail card
+		"""
+		try:
+			bottom_card = self.up.tail()
+		except Empty:
+			if card.get_value() == "Ace":
+				return True
+			return False
+		if bottom_card.suit != card.suit:
+			return False
+		if bottom_card.value + 1 != card.value:
+			return False
+		return True
+
+class TableauPile(ComboPile):
+	"""tableau pile is really two piles:
+	1) face up pile (card stack in play)
+	2) face down pile (draw pile to flip and get rid of)
+	
+	1 is limited to CARDS_PER_SUIT like a normal run (although it has to alternate color)
+	2 is variable from 0 cards to 6 cards across the range of piles.
+
+	which is why it doesn't inherit from Pile like the others
+	"""
+	def __init__(self, face_up_limit, face_down_limit):
+		super(TableauPile, self).__init__(face_up_limit, face_down_limit)
+
+	def accepts(self, card):
+		"""
+		return True if Card can be put on the bottom of our face up stack
+
+		Card must be different color suit and value 1 lower than our tail card
+		"""
+		try:
+			bottom_card = self.up.tail()
+		except Empty:
+			if card.get_value() == "King":
+				return True
+			return False
+		if bottom_card in card.previous_parents:
+			return False
+		if bottom_card.suit not in card.alternate_suits():
+			return False
+		if bottom_card.value != card.value + 1:
+			return False
+		return True
+
+class Deck(ComboPile):
+	"""A list of Cards"""
+	def __init__(self, limit = 52):
+		"""populate it with A,2,3,4,5,6,7,8,9,10,J,Q,K of each suit"""
+		super(Deck, self).__init__(limit)
+		for value in range(CARDS_PER_SUIT):
+			for suit in range(NUMBER_OF_SUITS):
+				self.down.put_item(Card(value, suit))
+		self.times_redealt = 0
+
+	def shuffle(self):
+		"""simple in-place shuffle"""
+		random.shuffle(self.down.cards)
+
+	# deck flip needs to not care about up pile
+	def flip(self):
+		"""
+		flip top card
+		if down pile is nonempty, move top card from down pile to up pile
+		"""
+		if self.down.empty():
+			return False
+		self.up.put_item(self.down.take_item())
+		return True
+
+class Table(object):
+	def __init__(self):
+		self.foundations = []
+		self.tableaus = [] # make the foundation and tableau piles
+		for i in range(NUMBER_OF_SUITS):
+			self.foundations.append(FoundationPile())
+		for i in range(7):
+			# i is both the index and the number of face_down cards
+			# face up limit will just be CARDS_PER_SUIT
+			self.tableaus.append(TableauPile(CARDS_PER_SUIT, i))
+		self.deck = Deck()
+
+	def __str__(self):
+		table = str()
+		table += 'deck: {}\n'.format(self.deck)
+		table += '\n'
+		table += 'foundation0: {}\n'.format(self.foundations[0])
+		table += 'foundation1: {}\n'.format(self.foundations[1])
+		table += 'foundation2: {}\n'.format(self.foundations[2])
+		table += 'foundation3: {}\n'.format(self.foundations[3])
+		table += '\n'
+		table += 'tableau0: {}\n'.format(self.tableaus[0])
+		table += 'tableau1: {}\n'.format(self.tableaus[1])
+		table += 'tableau2: {}\n'.format(self.tableaus[2])
+		table += 'tableau3: {}\n'.format(self.tableaus[3])
+		table += 'tableau4: {}\n'.format(self.tableaus[4])
+		table += 'tableau5: {}\n'.format(self.tableaus[5])
+		table += 'tableau6: {}\n'.format(self.tableaus[6])
+		return table
+
+	def deal(self):
+		self.deck.shuffle()
+		for i in range(7):
+			# draw one card and place it on face up stack
+			self.tableaus[i].up.put_item(self.deck.down.take_item())
+			for j in range(i):
+				# draw i cards and place on face down stack
+				self.tableaus[i].down.put_item(self.deck.down.take_item())
+
+	def draw(self, num = CARDS_PER_DRAW):
+		"""
+		draw_cards() and put them onto deck.up Pile
+		"""
+		if len(self.deck.down.cards) == 0:
+			if len(self.deck.up.cards) == 0:
+				return False
+			# don't redeal if we're over the limit
+			if self.deck.times_redealt >= CARDS_PER_DRAW:
+				return False
+			# put face up cards back onto down
+			self.deck.flop()
+			self.deck.times_redealt += 1
+		elif len(self.deck.down.cards) < num:
+			num = len(self.deck.down)
+		for i in range(num):
+			self.deck.flip()
+		return True
+
+	def get_heads(self):
+		return [tableau.up.head() for tableau in self.tableaus]
+
+	def get_tails(self):
+		return [tableau.up.tail() for tableau in self.tableaus]
+
+	def play_card(self):
+		card = self.deck.up[-1]
+		for tableau in self.tableaus:
+			pass
+			
+	def flip_tableaus(self):
+		for tableau in self.tableaus:
+			if tableau.flip():
+				return True
+		return False
+
+	def move_whole_tableau_stack(self):
+		"""
+		check the head of each tableau stack and see if we can move it onto the tail of
+		any others
+		"""
+		cards = []
+		for tableau in self.tableaus:
+			try:
+				card = tableau.up.head()
+			except Empty:
+				continue
+			if card is None:
+				continue
+			elif card.get_value() == "King":
+				# don't move a king from a pile with an empty down stack
+				try:
+					tableau.down.head()
+				except Empty:
+					continue
+			for other_tableau in self.tableaus:
+				if tableau is other_tableau:
+					continue
+				if other_tableau.accepts(card) == False:
+					continue
+				# now we need to move the whole stack over
+				for c in range(len(tableau.up.cards)):
+					try:
+						cards.append(tableau.up.take_item())
+					except:
+						return False
+				cards.reverse()
+				for c in cards:
+					try:
+						other_tableau.up.put_item(c)
+					except:
+						return False
+				return True
+		return False
+					
+
+	def move_onto_foundation(self):
+		for tableau in self.tableaus:
+			try:
+				card = tableau.up.tail()
+			except Empty:
+				continue
+			for foundation in self.foundations:
+				if foundation.accepts(card):
+					foundation.up.put_item(tableau.up.take_item())
+					return True
+		return False
+
+	def move_from_deck(self):
+		"""
+		return True if we move a card from deck onto any tableau or foundation
+		"""
+		try:
+			card = self.deck.up.tail()
+		except Empty:
+			return False
+		for tableau in self.tableaus:
+			if tableau.accepts(card):
+				tableau.up.put_item(self.deck.up.take_item())
+				return True
+		for foundation in self.foundations:
+			if foundation.accepts(card):
+				foundation.up.put_item(self.deck.up.take_item())
+				return True
+		return False
+
+
+def play_a(table):
+	"""first play function
+
+	each successful step goes back to the top
+	each failed step falls through
+
+	1) flip tableau piles
+	2) move whole tableau stack
+		3) move bottom card of tableau stack onto other tableau
+	4) move bottom card of tableau stack onto foundation
+	6) try and put top card of deck anywhere (tableau then foundation)
+	5) draw, cycling the deck if no draw available
+	"""
+
+	table.deal()
+	moves = 0
+	print 'Start:\n{}'.format(table)
+	while True:
+		#time.sleep(0.5)
+		moves += 1
+		if table.flip_tableaus():
+			continue
+		elif table.move_whole_tableau_stack():
+			continue
+		elif table.move_onto_foundation():
+			continue
+		elif table.move_from_deck():
+			continue
+		elif table.draw():
+			continue
+		else:
+			print 'move #{}: no more moves'.format(moves)
+			print 'number of times through the deck: {}'.format(table.deck.times_redealt)
+			break
+	print 'End:\n{}'.format(table)
+		
+
+def main():
+	# make table
+	#	make NUMBER_OF_SUITS empty foundation piles
+	#	make 7 tableau piles
+	# make deck
+	# shuffle it
+	# populate foundation piles
+	#
+	original_table = Table()
+	play_a(copy.deepcopy(original_table))
+
+if __name__ == "__main__":
+	main()
